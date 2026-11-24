@@ -64,6 +64,7 @@ namespace RC
         });
 
         REGISTER_STRING_SETTING(Overrides.ControllingModsTxt, section_overrides, ControllingModsTxt)
+        REGISTER_STRING_SETTING(Overrides.WorkshopAppId, section_overrides, WorkshopAppId)
 
         constexpr static File::CharType section_general[] = STR("General");
         REGISTER_BOOL_SETTING(General.EnableHotReloadSystem, section_general, EnableHotReloadSystem)

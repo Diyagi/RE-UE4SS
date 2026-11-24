@@ -26,6 +26,7 @@ namespace RC
         {
             File::StringType ModsFolderPath{};
             File::StringType ControllingModsTxt{};
+            std::wstring WorkshopAppId{};
         } Overrides;
 
         struct SectionGeneral

@@ -194,6 +194,7 @@ namespace RC
             Failure,
         };
         auto create_emergency_console_for_early_error(File::StringViewType error_message) -> void;
+        auto setup_steamworkshop_mod_paths() -> void;
         auto setup_mod_directory_path() -> void;
         auto create_simple_console() -> void;
         auto setup_unreal() -> void;

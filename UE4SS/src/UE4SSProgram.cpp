@@ -494,6 +494,80 @@ namespace RC
         printf_s("%S\n", FromCharTypePtr<wchar_t>(error_message.data()));
     }
 
+    auto UE4SSProgram::setup_steamworkshop_mod_paths() -> void
+    {
+        //TODO: Maybe we should use steam api and get mod paths from it instead.
+
+        auto lower = [](std::wstring s) {
+            for (auto& c : s) c = static_cast<wchar_t>(std::towlower(c));
+            return s;
+        };
+
+        auto same_path = [&](const std::filesystem::path& a, const std::filesystem::path& b) {
+            return lower(a.lexically_normal().wstring()) == lower(b.lexically_normal().wstring());
+        };
+
+        // Due to how steam installs workshop mods it is very likely both the game and the mods
+        // are in the same 'steamapps' folder.
+        // From the game directory we walk up until we find a folder named 'steamapps'.
+        std::error_code ec;
+        std::filesystem::path start = std::filesystem::weakly_canonical(m_game_executable_directory, ec);
+        if (ec) start = std::filesystem::path(m_game_executable_directory).lexically_normal();
+
+        std::optional<std::filesystem::path> steamapps;
+        for (std::filesystem::path p = start; !p.empty(); p = p.parent_path())
+        {
+            if (lower(p.filename().wstring()) == L"steamapps")
+            {
+                steamapps = p;
+                break;
+            }
+            if (p == p.parent_path()) break;
+        }
+
+        // If an workshop app id is not defined in the settings, we try to get the workshop app id from the env vars
+        std::wstring appId = settings_manager.Overrides.WorkshopAppId;
+        if (appId.empty())
+        {
+            wchar_t buf[32]{};
+            if (GetEnvironmentVariableW(L"SteamAppId", buf, static_cast<DWORD>(std::size(buf))) > 0 ||
+                GetEnvironmentVariableW(L"SteamGameId", buf, static_cast<DWORD>(std::size(buf))) > 0)
+            {
+                appId = buf;
+                Output::send(STR("Found appId from env vars: {}\n"), ensure_str(appId));
+            }
+        }
+
+        // For every workshop mod folder we check if an nested folder called either 'Scripts' or 'dlls' exists,
+        // if it does we consider it an ue4ss mod and add its path to 'm_mods_directories'.
+        if (steamapps && !appId.empty())
+        {
+            std::filesystem::path content = *steamapps / L"workshop" / L"content" / appId;
+            for (const auto& item : std::filesystem::directory_iterator(content, std::filesystem::directory_options::skip_permission_denied, ec))
+            {
+                std::error_code ec2;
+                if (!item.is_directory(ec2)) continue;
+ 
+                bool hasMod = false;
+                for (const auto& mod : std::filesystem::directory_iterator(item.path(), std::filesystem::directory_options::skip_permission_denied, ec2))
+                {
+                    std::error_code ec3;
+                    if (mod.is_directory(ec3) && (std::filesystem::is_directory(mod.path() / L"Scripts", ec3) || 
+                        std::filesystem::is_directory(mod.path() / L"dlls", ec3)))
+                    {
+                        hasMod = true;
+                        break;
+                    }
+                }
+                if (!hasMod) continue;
+ 
+                bool pathExists = false;
+                for (const auto& existing : m_mods_directories) pathExists = pathExists || same_path(existing, item.path());
+                if (!pathExists) add_mods_directory(item.path());
+            }
+        }
+    }
+
     auto UE4SSProgram::setup_mod_directory_path() -> void
     {
         std::filesystem::path default_mods_path{};
@@ -513,6 +587,7 @@ namespace RC
         }
 
         insert_mods_directory(default_mods_path, 0);
+        setup_steamworkshop_mod_paths();
 
         for (const auto& path : m_mods_directories_to_remove)
         {
