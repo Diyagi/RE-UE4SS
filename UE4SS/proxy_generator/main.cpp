@@ -392,10 +392,11 @@ int _tmain(int argc, TCHAR* argv[])
     cpp_file << "        HMODULE hUE4SSDll = load_ue4ss_dll(hInstDll);" << endl;
     cpp_file << "        if (!hUE4SSDll)" << endl;
     cpp_file << "        {" << endl;
-    cpp_file << "            MessageBox(nullptr, L\"Failed to load UE4SS.dll. Please see the docs on correct installation: "
-                "https://docs.ue4ss.com/installation-guide\", L\"UE4SS Error\", MB_OK | MB_ICONERROR);"
+    cpp_file << "            MessageBox(nullptr, L\"UE4SS.dll was not found, so mods are disabled for this session.\\n\\n"
+                "The workshop item may still be downloading, or it was unsubscribed. "
+                "Subscribe to it again, or delete dwmapi.dll from the game folder to remove this message.\", "
+                "L\"UE4SS not loaded\", MB_OK | MB_ICONWARNING);"
              << endl;
-    cpp_file << "            ExitProcess(0);" << endl;
     cpp_file << "        }" << endl;
     cpp_file << "    }" << endl;
     cpp_file << "    else if (fdwReason == DLL_PROCESS_DETACH)" << endl;
