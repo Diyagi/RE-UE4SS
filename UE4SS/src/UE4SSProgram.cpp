@@ -534,11 +534,12 @@ namespace RC
                 GetEnvironmentVariableW(L"SteamGameId", buf, static_cast<DWORD>(std::size(buf))) > 0)
             {
                 appId = buf;
+                settings_manager.Overrides.WorkshopAppId = buf;
                 Output::send(STR("Found appId from env vars: {}\n"), ensure_str(appId));
             }
         }
 
-        // For every workshop mod folder we check if an nested folder called either 'Scripts' or 'dlls' exists,
+        // For every workshop mod folder we check if an nested folder named either 'Scripts' or 'dlls' exists,
         // if it does we consider it an ue4ss mod and add its path to 'm_mods_directories'.
         if (steamapps && !appId.empty())
         {
