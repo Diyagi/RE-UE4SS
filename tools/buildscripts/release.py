@@ -35,6 +35,7 @@ class ReleaseHandler:
         # Lua mods to disable (but keep) in the non-dev/release version
         self.lua_mods_to_disable_in_release = [
             'LineTraceMod',
+            'Keybinds'
         ]
 
         # Files in root/assets to exclude from the non-dev/release version of the zip 
