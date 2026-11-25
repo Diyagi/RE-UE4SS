@@ -229,48 +229,23 @@ namespace WorkshopPakLoader {
 
     void WorkshopPakLoader::BuildPakFolders()
     {
-        auto& uProgram = UE4SSProgram::get_program();
-        auto gameExecDir = uProgram.get_game_executable_directory();
+        std::vector<std::filesystem::path> workshop_mods = UE4SSProgram::get_program().get_workshop_mods_directories();
+
+        if (workshop_mods.empty())
+            return;
         
-        auto lower = [](std::wstring s) {
-            for (auto& c : s) c = static_cast<wchar_t>(std::towlower(c));
-            return s;
-        };
-        
-        std::error_code ec;
-        std::filesystem::path start = std::filesystem::weakly_canonical(gameExecDir, ec);
-        if (ec) start = std::filesystem::path(gameExecDir).lexically_normal();
-        
-        std::optional<std::filesystem::path> steamapps;
-        for (std::filesystem::path p = start; !p.empty(); p = p.parent_path())
+        for (const auto& mod : workshop_mods)
         {
-            if (lower(p.filename().wstring()) == L"steamapps")
+            std::error_code ec{};
+            for (const auto& item : std::filesystem::directory_iterator(mod, std::filesystem::directory_options::skip_permission_denied, ec))
             {
-                steamapps = p;
-                break;
-            }
-            if (p == p.parent_path()) break;
-        }
-        
-        std::wstring appId = UE4SSProgram::get_program().settings_manager.Overrides.WorkshopAppId;
-        
-        if (steamapps && !appId.empty())
-        {
-            std::filesystem::path content = *steamapps / L"workshop" / L"content" / appId;
-            for (const auto& mod : std::filesystem::directory_iterator(content, std::filesystem::directory_options::skip_permission_denied, ec))
-            {
-                std::error_code ec2;
-                for (const auto& item : std::filesystem::directory_iterator(mod.path(), std::filesystem::directory_options::skip_permission_denied, ec2))
+                if (!item.is_directory(ec)) continue;
+                
+                for (const wchar_t* name : {L"PatchPaks", L"LogicPaks"})
                 {
-                    std::error_code ec3;
-                    if (!item.is_directory(ec3)) continue;
-                    
-                    for (const wchar_t* name : {L"PatchPaks", L"LogicPaks"})
-                    {
-                        std::filesystem::path p = item.path() / name;
-                        if (std::filesystem::is_directory(p, ec3) && !std::filesystem::is_empty(p)) 
-                        pakFolders.push_back(p);
-                    }
+                    std::filesystem::path p = item.path() / name;
+                    if (std::filesystem::is_directory(p, ec) && !std::filesystem::is_empty(p)) 
+                    pakFolders.push_back(p);
                 }
             }
         }

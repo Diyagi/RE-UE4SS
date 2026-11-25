@@ -494,30 +494,13 @@ namespace RC
         printf_s("%S\n", FromCharTypePtr<wchar_t>(error_message.data()));
     }
 
-    auto UE4SSProgram::setup_steamworkshop_mod_paths() -> void
+    auto UE4SSProgram::find_steamworkshop_mod_paths() -> void 
     {
-        //TODO: Maybe we should use steam api and get mod paths from it instead.
-
-        auto lower = [](std::wstring s) {
-            for (auto& c : s) c = static_cast<wchar_t>(std::towlower(c));
-            return s;
-        };
-
-        auto same_path = [&](const std::filesystem::path& a, const std::filesystem::path& b) {
-            return lower(a.lexically_normal().wstring()) == lower(b.lexically_normal().wstring());
-        };
-
-        // Due to how steam installs workshop mods it is very likely both the game and the mods
-        // are in the same 'steamapps' folder.
-        // From the game directory we walk up until we find a folder named 'steamapps'.
-        std::error_code ec;
-        std::filesystem::path start = std::filesystem::weakly_canonical(m_game_executable_directory, ec);
-        if (ec) start = std::filesystem::path(m_game_executable_directory).lexically_normal();
-
         std::optional<std::filesystem::path> steamapps;
-        for (std::filesystem::path p = start; !p.empty(); p = p.parent_path())
+        // Finds the steamapps folder the game is running under.
+        for (std::filesystem::path p = m_game_executable_directory; !p.empty(); p = p.parent_path())
         {
-            if (lower(p.filename().wstring()) == L"steamapps")
+            if (p.filename().wstring() == L"steamapps")
             {
                 steamapps = p;
                 break;
@@ -539,33 +522,97 @@ namespace RC
             }
         }
 
-        // For every workshop mod folder we check if an nested folder named either 'Scripts' or 'dlls' exists,
-        // if it does we consider it an ue4ss mod and add its path to 'm_mods_directories'.
-        if (steamapps && !appId.empty())
+        std::error_code ec;
+        if (!steamapps || !std::filesystem::is_directory(*steamapps, ec))
+            return;
+
+        std::filesystem::path ws_acf = *steamapps / "workshop" / (L"appworkshop_" + appId + L".acf");
+        std::filesystem::path ws_content = *steamapps / "workshop" / "content" / appId;
+
+        std::ifstream acf_file(ws_acf, std::ios::binary);
+        if (!acf_file) return;
+        std::stringstream ss;
+        ss << acf_file.rdbuf();
+        const std::string text = ss.str();
+    
+        // Finds "WorkshopItemsInstalled" inside the ACF
+        size_t pos = text.find("\"WorkshopItemsInstalled\"");
+        if (pos == std::string::npos) return;
+
+        pos = text.find('{', pos);
+        if (pos == std::string::npos) return;
+
+        ++pos;
+    
+        int depth = 1;
+        // Loop thru each block inside "WorkshopItemsInstalled" until we reach depth 0 or EOF
+        while (pos < text.size() && depth > 0)
         {
-            std::filesystem::path content = *steamapps / L"workshop" / L"content" / appId;
-            for (const auto& item : std::filesystem::directory_iterator(content, std::filesystem::directory_options::skip_permission_denied, ec))
+            char c = text[pos];
+            if (c == '{')      { ++depth; ++pos; }
+            else if (c == '}') { --depth; ++pos; }
+            else if (c == '"')
             {
-                std::error_code ec2;
-                if (!item.is_directory(ec2)) continue;
- 
-                bool hasMod = false;
-                for (const auto& mod : std::filesystem::directory_iterator(item.path(), std::filesystem::directory_options::skip_permission_denied, ec2))
+                size_t end = text.find('"', pos + 1);
+                if (end == std::string::npos) break;
+    
+                // At depth 1 the quoted strings are the item IDs, deeper ones are size/timeupdated/manifest data
+                if (depth == 1)
                 {
-                    std::error_code ec3;
-                    if (mod.is_directory(ec3) && (std::filesystem::is_directory(mod.path() / L"Scripts", ec3) || 
-                        std::filesystem::is_directory(mod.path() / L"dlls", ec3)))
+                    std::string id = text.substr(pos + 1, end - pos - 1);
+                    std::filesystem::path mod_dir = ws_content / id;
+                    if (std::filesystem::is_directory(mod_dir, ec))
                     {
-                        hasMod = true;
-                        break;
+                        m_workshop_mods_directories.push_back(std::move(mod_dir));
                     }
                 }
-                if (!hasMod) continue;
- 
-                bool pathExists = false;
-                for (const auto& existing : m_mods_directories) pathExists = pathExists || same_path(existing, item.path());
-                if (!pathExists) add_mods_directory(item.path());
+                pos = end + 1;
             }
+            else
+            {
+                ++pos;
+            }
+        }
+        return;
+    }
+
+    auto UE4SSProgram::setup_steamworkshop_mod_paths() -> void
+    {
+        find_steamworkshop_mod_paths();
+
+        if (m_workshop_mods_directories.empty())
+            return;
+
+        auto lower = [](std::wstring s) {
+            for (auto& c : s) c = static_cast<wchar_t>(std::towlower(c));
+            return s;
+        };
+
+        auto same_path = [&](const std::filesystem::path& a, const std::filesystem::path& b) {
+            return lower(a.lexically_normal().wstring()) == lower(b.lexically_normal().wstring());
+        };
+
+        // Before adding the folder as a UE4SS we check if it contains an folder name either "Scripts" or "dlls"
+        for (const auto& mod : m_workshop_mods_directories)
+        {
+            std::error_code ec;
+            if (!std::filesystem::is_directory(mod, ec)) continue;
+
+            bool hasMod = false;
+            for (const auto& item : std::filesystem::directory_iterator(mod, std::filesystem::directory_options::skip_permission_denied, ec))
+            {
+                if (item.is_directory(ec) && (std::filesystem::is_directory(item.path() / L"Scripts", ec) || 
+                    std::filesystem::is_directory(item.path() / L"dlls", ec)))
+                {
+                    hasMod = true;
+                    break;
+                }
+            }
+            if (!hasMod) continue;
+
+            bool pathExists = false;
+            for (const auto& existing : m_mods_directories) pathExists = pathExists || same_path(existing, mod);
+            if (!pathExists) add_mods_directory(mod);
         }
     }
 
@@ -585,6 +632,12 @@ namespace RC
         if (std::filesystem::exists(m_legacy_root_directory / "Mods") && !std::filesystem::exists(default_mods_path))
         {
             default_mods_path = m_legacy_root_directory / "Mods";
+        }
+
+        // Add a path to load mods in the game directory
+        if (std::filesystem::exists(m_game_executable_directory / "UE4SSMods"))
+        {
+            insert_mods_directory(m_game_executable_directory / "UE4SSMods", 0);
         }
 
         insert_mods_directory(default_mods_path, 0);
@@ -2283,6 +2336,11 @@ namespace RC
     auto UE4SSProgram::get_mods_directories() -> std::vector<std::filesystem::path>&
     {
         return m_mods_directories;
+    }
+
+    auto UE4SSProgram::get_workshop_mods_directories() -> std::vector<std::filesystem::path>&
+    {
+        return m_workshop_mods_directories;
     }
 
     auto UE4SSProgram::get_mods_txt_entries() -> std::unordered_map<std::string, bool>
