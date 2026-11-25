@@ -22,6 +22,7 @@ class ReleaseHandler:
         self.cpp_mods = {
             'KismetDebuggerMod': {'create_config': True, 'include_in_release': False},
             'EventViewerMod': {'create_config': False, 'include_in_release': False},
+            'WorkshopModLoader': {'create_config': False, 'include_in_release': True},
         }
 
         # Lua mods to exclude from the non-dev/release version of the zip
