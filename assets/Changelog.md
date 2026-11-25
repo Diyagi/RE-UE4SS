@@ -2,77 +2,7 @@ v4.1.0
 ==============
 TBD
 
-**Important:** There is currently no important information for this release.
-
-> [!NOTE]
-> One of our maintainers, Narknon, is developing a modding friendly sandbox adventure game in UE 5.8.
-> If you'd like to support them, consider checking out and/or wishlisting [Noro on Steam](https://store.steampowered.com/app/5363190/Noro/?utm_source=ue4ss&utm_medium=github&utm_campaign=release_notes) or following [Noro Softworks](https://linktr.ee/norosoftworks).
-
-## New
-
-### General
-
-### Live View
-
-### Lua Debugger
-
-### UHT Dumper
-
-### Static Mesh Dumper
-
-### Lua API
-
-### C++ API
-
-### BPModLoader
-
-### Experimental
-
-
-## Changes
-
-### General
-
-### Live View
-
-### UHT Dumper
-
-### Lua API
-
-### C++ API
-
-### BPModLoader
-
-### ConsoleEnablerMod
-
-### Repo & Build Process
-
-
-## Fixes
-
-### General
-
-### Live View
-
-### UHT Dumper
-
-### Lua API
-Fixed `DataTable:AddRow` and copying a `UScriptStruct` failing on UE 5.7+ with "Virtual UScriptStruct::ICppStructOps::Copy is unavailable". ([UE4SS #1501](https://github.com/UE4SS-RE/RE-UE4SS/issues/1501))  
-
-Fixed a freeze when a Lua `RegisterHook` callback on a Blueprint function calls `LoadAsset` while the async loading thread is on: the `StaticConstructObject` hook no longer waits for `m_thread_actions_mutex` on other threads. ([UE4SS #1504](https://github.com/UE4SS-RE/RE-UE4SS/issues/1504))  
-
-### C++ API
-
-### BPModLoader
-
-### EventViewerMod
-
-## Settings
-
-### Added
-
-### Removed
-
+**Upstream base: [52f0bc1d](https://github.com/UE4SS-RE/RE-UE4SS/tree/52f0bc1d7f5b1f731ac40f1c5977f796850b49f4)**
 
 v4.0.0
 ==============

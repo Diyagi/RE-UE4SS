@@ -48,7 +48,8 @@ class ReleaseHandler:
             'CustomGameConfigs',
             'MapGenBP',
             'Changelog.md',
-            'Default_UVTD_Configs'
+            'Default_UVTD_Configs',
+            'UE4SS-settings.ini'
         ]
 
         # Settings to change in the release. The default settings in assets/UE4SS-settings.ini are for dev
@@ -62,10 +63,15 @@ class ReleaseHandler:
         }
 
     def make_staging_dirs(self):
-        shutil.copytree('assets', self.ue4ss_dir)
+        shutil.copytree('assets/ue4ss', self.ue4ss_dir)
         shutil.copy('LICENSE', os.path.join(self.ue4ss_dir, 'LICENSE'))
 
         if not self.is_dev_release:
+            shutil.copy('UE4SS-settings.ini', self.staging_dir)
+            shutil.copy('install.bat', self.staging_dir)
+            shutil.copy('install.sh', self.staging_dir)
+            shutil.copy('override.txt', self.staging_dir)
+
             for file in self.files_to_exclude_from_release:
                 path = os.path.join(self.ue4ss_dir, file)
                 if os.path.exists(path):
@@ -274,8 +280,8 @@ class Packager:
         release_handler.package_release(self.args.changelog_path)
         release_handler.cleanup()
 
-        shutil.make_archive(os.path.join(self.release_output, 'zCustomGameConfigs'), 'zip', 'assets/CustomGameConfigs')
-        shutil.make_archive(os.path.join(self.release_output, 'zMapGenBP'), 'zip', 'assets/MapGenBP')
+        shutil.make_archive(os.path.join(self.release_output, 'zCustomGameConfigs'), 'zip', 'assets/ue4ss/CustomGameConfigs')
+        shutil.make_archive(os.path.join(self.release_output, 'zMapGenBP'), 'zip', 'assets/ue4ss/MapGenBP')
 
         changelog = parse_changelog(self.args.changelog_path)
         with open(os.path.join(self.release_output, 'release_notes.md'), 'w') as file:
