@@ -82,10 +82,10 @@ class ReleaseHandler:
                         shutil.rmtree(path)
 
         if not self.is_dev_release:
-            shutil.copy('UE4SS-settings.ini', self.staging_dir)
-            shutil.copy('install.bat', self.staging_dir)
-            shutil.copy('install.sh', self.staging_dir)
-            shutil.copy('override.txt', self.staging_dir)
+            shutil.copy('assets/UE4SS-settings.ini', self.staging_dir)
+            shutil.copy('assets/install.bat', self.staging_dir)
+            shutil.copy('assets/install.sh', self.staging_dir)
+            shutil.copy('assets/override.txt', self.staging_dir)
 
             for file in self.files_to_exclude_from_release:
                 path = os.path.join(self.ue4ss_dir, file)
@@ -122,7 +122,7 @@ class ReleaseHandler:
         if not self.is_experimental: self.modify_changelog()
 
     def modify_settings(self, settings_to_modify):
-        config_path = os.path.join(self.ue4ss_dir, 'UE4SS-settings.ini')
+        config_path = os.path.join(self.staging_dir, 'UE4SS-settings.ini')
         with open(config_path, mode='r', encoding='utf-8') as file:
             content = file.read()
 
