@@ -62,9 +62,24 @@ class ReleaseHandler:
             'bUseUObjectArrayCache': "false",
         }
 
+        # Files to exclude from ue4ss folder
+        self.files_to_exclude_from_ue4ss = [
+            'install.bat',
+            'install.sh',
+            'override.txt'
+        ]
+
     def make_staging_dirs(self):
-        shutil.copytree('assets/ue4ss', self.ue4ss_dir)
+        shutil.copytree('assets', self.ue4ss_dir)
         shutil.copy('LICENSE', os.path.join(self.ue4ss_dir, 'LICENSE'))
+
+        for file in self.files_to_exclude_from_ue4ss:
+                path = os.path.join(self.ue4ss_dir, file)
+                if os.path.exists(path):
+                    if os.path.isfile(path):
+                        os.remove(path)
+                    elif os.path.isdir(path):
+                        shutil.rmtree(path)
 
         if not self.is_dev_release:
             shutil.copy('UE4SS-settings.ini', self.staging_dir)
@@ -280,8 +295,8 @@ class Packager:
         release_handler.package_release(self.args.changelog_path)
         release_handler.cleanup()
 
-        shutil.make_archive(os.path.join(self.release_output, 'zCustomGameConfigs'), 'zip', 'assets/ue4ss/CustomGameConfigs')
-        shutil.make_archive(os.path.join(self.release_output, 'zMapGenBP'), 'zip', 'assets/ue4ss/MapGenBP')
+        shutil.make_archive(os.path.join(self.release_output, 'zCustomGameConfigs'), 'zip', 'assets/CustomGameConfigs')
+        shutil.make_archive(os.path.join(self.release_output, 'zMapGenBP'), 'zip', 'assets/MapGenBP')
 
         changelog = parse_changelog(self.args.changelog_path)
         with open(os.path.join(self.release_output, 'release_notes.md'), 'w') as file:
